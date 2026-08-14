@@ -6,7 +6,7 @@
 
 ## Kroki przed preview
 
-1. W Airtable dodaj tabelę czasu opisaną w README. Link `Brygada` musi prowadzić do `Brygady`.
+1. Zweryfikuj istniejącą tabelę `Ewidencja czasu pracy` (ID `tblfGqEvRqXID1SPp`). Pole `Brygada` jest połączone z tabelą `Brygady`.
 2. W Netlify ustaw `AIRTABLE_TOKEN` i `AIRTABLE_BASE_ID`. PAT ogranicz do jednej bazy i minimalnych zakresów.
 3. Włącz Identity, ustaw **Invite only**, wyłącz publiczną rejestrację i zaproś użytkowników.
 4. Administratorowi ustaw `app_metadata.role=admin`; brygadziście `role=foreman` i rekord `crewId` z Airtable.
