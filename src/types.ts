@@ -7,3 +7,4 @@ export type AdminRow={id:string;[key:string]:unknown}
 export type AdminData=Record<AdminResource,AdminRow[]>
 export type SummaryRow={date:string;type:string;person:string;crew:string;site:string;hours:number;meters:number;cost:number}
 export type Summary={from:string;to:string;totals:{foremanHours:number;helperHours:number;helperCost:number;meters:number;problems:number};rows:SummaryRow[]}
+export type Account={id:string;email:string;name:string;role:string;blocked:boolean;lastSignInAt:string;createdAt:string}
