@@ -7,9 +7,9 @@
 ## Kroki przed preview
 
 1. Zweryfikuj istniejącą tabelę `Ewidencja czasu pracy` (ID `tblfGqEvRqXID1SPp`). Pole `Brygada` jest połączone z tabelą `Brygady`.
-2. W Netlify ustaw `AIRTABLE_TOKEN` i `AIRTABLE_BASE_ID`. PAT ogranicz do jednej bazy i minimalnych zakresów.
+2. W Netlify ustaw `AIRTABLE_TOKEN`, `AIRTABLE_BASE_ID` i `ADMIN_EMAIL`. PAT ogranicz do jednej bazy i minimalnych zakresów. `ADMIN_EMAIL` jest jedynym kontem z pełnym dostępem.
 3. Włącz Identity, ustaw **Invite only**, wyłącz publiczną rejestrację i zaproś użytkowników.
-4. Administratorowi ustaw `app_metadata.role=admin`; brygadziście `role=foreman` i rekord `crewId` z Airtable.
+4. W tabeli `Brygady` wpisuj adres logowania danej osoby w polu `E-mail brygadzisty`. Zmiana adresu natychmiast zmienia przypisanie bez edycji Identity i kodu.
 5. Wykonaj preview deploy, zaloguj oba typy użytkownika i przetestuj negatywnie próbę wysłania cudzego `crewId`.
 
 ## Przypomnienia PWA
