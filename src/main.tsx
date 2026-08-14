@@ -1,1 +1,1 @@
-import React from 'react';import{createRoot}from'react-dom/client';import'./styles.css';import'./login.css';import'./brand.css';import App from'./App';createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>)
+import React from 'react';import{createRoot}from'react-dom/client';import'./styles.css';import'./login.css';import'./brand.css';import'./dashboard.css';import'./pdf-only.css';import App from'./App';createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>)

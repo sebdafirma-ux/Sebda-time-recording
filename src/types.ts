@@ -8,3 +8,5 @@ export type AdminData=Record<AdminResource,AdminRow[]>
 export type SummaryRow={date:string;type:string;person:string;crew:string;site:string;hours:number;meters:number;cost:number}
 export type Summary={from:string;to:string;totals:{foremanHours:number;helperHours:number;helperCost:number;meters:number;problems:number};rows:SummaryRow[]}
 export type Account={id:string;email:string;name:string;role:string;blocked:boolean;lastSignInAt:string;createdAt:string}
+export type PersonalReport={from:string;to:string;title:string;totals:{hours:number;meters:number};rows:Array<{date:unknown;description:unknown;hours:number;meters:number}>}
+export type LiveDashboard={counts:{crews:number;helpers:number;sites:number;active:number};active:Array<{person:string;role:string;crew:string;site:string;startedAt:string}>;today:{hours:number;meters:number;reports:number}}
