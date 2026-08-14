@@ -1,7 +1,9 @@
-export type Role='admin'|'foreman'
+export type Role='admin'|'foreman'|'helper'
 export type Option={id:string;name:string;parentId?:string}
-export type Bootstrap={user:{name:string;role:Role;crewId?:string};sites:Option[];buildings:Option[];crews:Option[];activeShift?:{id:string;startedAt:string};todayMinutes:number}
+export type Bootstrap={user:{name:string;role:Role;crewId?:string};sites:Option[];buildings:Option[];crews:Option[];crewSites:Record<string,string[]>;activeShift?:{id:string;startedAt:string;crewId?:string;siteId?:string};todayMinutes:number;contact:{company:string;owner:string;email:string;phone:string}}
 export type Report={siteId:string;buildingId:string;crewId:string;squareMeters:number;zone:string;people:number;notes:string;problem?:string}
-export type AdminResource='crews'|'sites'|'buildings'|'reports'|'problems'|'shifts'|'invoices'|'costs'
+export type AdminResource='crews'|'helpers'|'sites'|'buildings'|'reports'|'problems'|'shifts'|'helperShifts'|'invoices'|'costs'
 export type AdminRow={id:string;[key:string]:unknown}
 export type AdminData=Record<AdminResource,AdminRow[]>
+export type SummaryRow={date:string;type:string;person:string;crew:string;site:string;hours:number;meters:number;cost:number}
+export type Summary={from:string;to:string;totals:{foremanHours:number;helperHours:number;helperCost:number;meters:number;problems:number};rows:SummaryRow[]}
