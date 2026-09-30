@@ -1,15 +1,64 @@
-import{useEffect,useState}from'react'
-import{Activity,ChevronRight,Share2,Users,X}from'lucide-react'
-import{api}from'./api'
-import{makeReportPdf,saveOrSharePdf}from'./pdf'
-import HistoryPanel from'./HistoryPanel'
-import type{CompanyOverview,Role}from'./types'
-const iso=(d:Date)=>d.toISOString().slice(0,10)
-export default function DashboardExtras({role,onMessage}:{role:Role;onMessage:(s:string)=>void}){const today=new Date(),start=new Date(today.getFullYear(),today.getMonth(),1);const[from,setFrom]=useState(iso(start)),[to,setTo]=useState(iso(today)),[overview,setOverview]=useState<CompanyOverview>(),[selectedCrew,setSelectedCrew]=useState<string>(),[selectedHelper,setSelectedHelper]=useState<string>(),[busy,setBusy]=useState(false)
-useEffect(()=>{document.body.dataset.role=role;if(role!=='admin')return;const load=()=>api.overview().then(setOverview).catch(e=>onMessage((e as Error).message));load();const id=setInterval(load,60000);return()=>clearInterval(id)},[role])
-async function pdf(){setBusy(true);try{if(role==='admin'){if(!selectedCrew)return onMessage('Najpierw wybierz brygadę.');const r=await api.crewReport(selectedCrew,from,to),rows=r.rows.map(x=>({...x,description:`${x.description} | zarobek ${Number(x.earnings||0).toFixed(2)} zl`}));await saveOrSharePdf(makeReportPdf(`${r.title} | zarobek ${r.totals.earnings.toFixed(2)} zl | pomocnicy ${r.totals.helperCost.toFixed(2)} zl`,r.from,r.to,rows,r.totals),`SEBDA-${r.title.replace(/\W+/g,'-')}-${from}-${to}.pdf`)}else{const r=await api.personalReport(from,to);await saveOrSharePdf(makeReportPdf(r.title,r.from,r.to,r.rows,r.totals),`SEBDA-raport-${from}-${to}.pdf`)}}catch(e){onMessage((e as Error).message)}finally{setBusy(false)}}
-if(role!=='admin')return <section className="content extras"><ReportBox from={from} to={to} setFrom={setFrom} setTo={setTo} busy={busy} onPdf={pdf} title="Twój raport"/><HistoryPanel role={role} from={from} to={to} onMessage={onMessage}/></section>
-const crew=overview?.crews.find(x=>x.id===selectedCrew)
-return <section className="content extras admin-extras"><div className="live-box"><div className="section-title"><p className="eyebrow">Aktualizacja co minutę</p><h2><Activity/>Firma na żywo</h2><p>Kliknij brygadę, aby zobaczyć dzisiejsze m² i rozliczenie.</p></div><h3>Brygady</h3><div className="click-grid">{overview?.crews.map(x=><button key={x.id} onClick={()=>{setSelectedCrew(x.id);setSelectedHelper(undefined)}}><span className={`live-dot ${x.active?'on':''}`}/><div><strong>{x.name}</strong><small>{x.site||'Brak wskazanej budowy'} · {x.hours.toFixed(1)} h · {x.meters.toFixed(1)} m²</small></div><ChevronRight/></button>)}</div></div>{crew&&<Detail title={crew.name} onClose={()=>setSelectedCrew(undefined)} rows={[['Brygadzista',crew.foreman],['Status',crew.active?'Pracuje teraz':'Nieaktywny'],['Budowa',crew.site||'—'],['Start',crew.startedAt?new Date(crew.startedAt).toLocaleTimeString('pl-PL'):'—'],['Wykonano',`${crew.meters.toFixed(2)} m²`],['Zarobek brygady',`${crew.earnings.toFixed(2)} zł`],]}/>}<ReportBox from={from} to={to} setFrom={setFrom} setTo={setTo} busy={busy} onPdf={pdf} title={crew?`Raport: ${crew.name}`:'Wybierz brygadę do raportu'} disabled={!crew}/><HistoryPanel role={role} crewId={selectedCrew} from={from} to={to} onMessage={onMessage}/></section>}
-function Detail({title,rows,onClose}:{title:string;rows:[string,string][];onClose:()=>void}){return <div className="detail-card"><button className="iconbtn" onClick={onClose}><X/></button><h3>{title}</h3><dl>{rows.map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></div>}
-function ReportBox({from,to,setFrom,setTo,busy,onPdf,title,disabled}:{from:string;to:string;setFrom:(s:string)=>void;setTo:(s:string)=>void;busy:boolean;onPdf:()=>void;title:string;disabled?:boolean}){return <div className="personal-report"><div><p className="eyebrow">Raport PDF</p><h3><Share2/>{title}</h3><p>Raport zawiera daty, m² i rozliczenie wybranej brygady.</p></div><div className="report-range"><label>Od<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Do<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><button className="primary" disabled={busy||disabled} onClick={onPdf}><Share2 size={17}/>Generuj PDF</button></div></div>}
+import {useEffect,useState} from 'react'
+import {Activity,ChevronRight,Download,Users,X} from 'lucide-react'
+import {api} from './api'
+import {periodDates} from './report-periods'
+import HistoryPanel from './HistoryPanel'
+import type {CompanyOverview,ExportReport,Option,Role} from './types'
+const number=(n:number)=>n.toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})
+
+export default function DashboardExtras({role,onMessage}:{role:Role;onMessage:(s:string)=>void}){
+ const initial=periodDates('month')
+ const [from,setFrom]=useState(initial.from),[to,setTo]=useState(initial.to)
+ const [overview,setOverview]=useState<CompanyOverview>(),[selectedCrew,setSelectedCrew]=useState('')
+ const [siteId,setSiteId]=useState(''),[byBuilding,setByBuilding]=useState(false)
+ const [sites,setSites]=useState<Option[]>([])
+ const [report,setReport]=useState<ExportReport>(),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false)
+ useEffect(()=>{document.body.dataset.role=role;if(role!=='admin')return;const load=()=>api.overview().then(setOverview).catch(e=>onMessage((e as Error).message));load();const id=setInterval(load,60000);return()=>clearInterval(id)},[role])
+ useEffect(()=>{
+  let current=true;setReport(undefined)
+  if(!from||!to||from>to){setLoading(false);return()=>{current=false}}
+  setLoading(true)
+  api.exportReport(from,to,selectedCrew,siteId).then(r=>{if(current){setReport(r);setSites(r.sites)}}).catch(e=>{if(current)onMessage((e as Error).message)}).finally(()=>{if(current)setLoading(false)})
+  return()=>{current=false}
+ },[from,to,selectedCrew,siteId,role])
+ function chooseCrew(id:string){setSelectedCrew(id);setSiteId('')}
+ function period(p:'day'|'week'|'month'){const dates=periodDates(p);setFrom(dates.from);setTo(dates.to)}
+ async function pdf(){
+  if(!report||from>to)return
+  setBusy(true)
+  try{
+   const current=await api.exportReport(from,to,selectedCrew,siteId)
+   const {makeExportPdf,downloadPdf}=await import('./pdf')
+   const blob=await makeExportPdf(current,byBuilding&&role!=='helper')
+   const title=current.title.replace(/[^\p{L}\p{N}]+/gu,'-')
+   downloadPdf(blob,`SEBDA-${title}-${from}-${to}${siteId?'-budowa':''}${byBuilding?'-budynki':''}.pdf`)
+   onMessage('PDF gotowy. Pobieranie rozpoczęte.')
+  }catch(e){onMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ const crew=overview?.crews.find(x=>x.id===selectedCrew)
+ const allTotals=overview?.crews.reduce((sum,c)=>({meters:sum.meters+c.meters,earnings:sum.earnings+c.earnings}),{meters:0,earnings:0})
+ return <section className={`content extras ${role==='admin'?'admin-extras':''}`}>
+  {role==='admin'&&<>
+   <div className="live-box">
+    <div className="section-title"><p className="eyebrow">Dzisiaj · aktualizacja co minutę</p><h2><Activity/>Firma na żywo</h2><p>Wybierz jedną brygadę lub wszystkie, aby zobaczyć dzisiejsze m² i rozliczenie.</p></div>
+    <button className={`all-crews ${!selectedCrew?'selected':''}`} aria-pressed={!selectedCrew} onClick={()=>chooseCrew('')}><Users/><span><strong>Wszystkie brygady</strong><small>{overview?`${overview.crews.length} brygad · ${number(allTotals!.meters)} m² · ${number(allTotals!.earnings)} zł`:'Ładowanie…'}</small></span></button>
+    <div className="click-grid">{overview?.crews.map(x=><button key={x.id} aria-pressed={selectedCrew===x.id} className={selectedCrew===x.id?'selected':''} onClick={()=>chooseCrew(x.id)}><div><strong>{x.name}</strong><small>{x.site||'Brak dzisiejszych wpisów na budowie'} · {number(x.meters)} m² · {number(x.earnings)} zł</small></div><ChevronRight/></button>)}</div>
+    {!selectedCrew&&overview&&<div className="admin-table-wrap"><table><caption>Dzisiejsze rozliczenie wszystkich brygad</caption><thead><tr><th>Brygada</th><th>Budowa</th><th>m²</th><th>Zarobek</th></tr></thead><tbody>{overview.crews.map(x=><tr key={x.id}><td>{x.name}</td><td>{x.site||'—'}</td><td>{number(x.meters)}</td><td>{number(x.earnings)} zł</td></tr>)}</tbody><tfoot><tr><th colSpan={2}>Razem</th><td>{number(allTotals!.meters)}</td><td>{number(allTotals!.earnings)} zł</td></tr></tfoot></table></div>}
+   </div>
+   {crew&&<div className="detail-card"><button className="iconbtn" aria-label="Pokaż wszystkie brygady" onClick={()=>chooseCrew('')}><X/></button><h3>{crew.name} · dzisiaj</h3><dl>{[['Brygadzista',crew.foreman],['Budowa',crew.site||'Brak dzisiejszych wpisów'],['Wykonano',`${number(crew.meters)} m²`],['Zarobek brygady',`${number(crew.earnings)} zł`]].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></div>}
+  </>}
+  <div className="personal-report report-builder">
+   <div><p className="eyebrow">Raport PDF</p><h3><Download/>{role==='admin'?(crew?`Raport: ${crew.name}`:'Raport: wszystkie brygady'):'Twój raport'}</h3><p>{role==='helper'?'Twój czas pracy i rozliczenie.':'Wykonane m², stawki i zarobek. Wybierz okres oraz budowę.'}</p></div>
+   <div className="period-buttons" aria-label="Okres raportu"><button onClick={()=>period('day')}>Dzień</button><button onClick={()=>period('week')}>Tydzień</button><button onClick={()=>period('month')}>Miesiąc</button></div>
+   <div className="report-filters">
+    <label>Od<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Do<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
+    <label>Budowa do raportu<select value={siteId} onChange={e=>setSiteId(e.target.value)}><option value="">Wszystkie budowy</option>{sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+   </div>
+   {role!=='helper'&&<label className="check report-breakdown"><input type="checkbox" checked={byBuilding} onChange={e=>setByBuilding(e.target.checked)}/>Podsumowanie z podziałem na budynki</label>}
+   {from>to&&<p className="form-error">Data „Od” nie może być późniejsza niż „Do”.</p>}
+   {loading?<p role="status">Ładowanie raportu…</p>:report&&<p className="report-total">{report.rows.length} wpisów · {number(report.kind==='hours'?report.totals.hours:report.totals.meters)} {report.kind==='hours'?'h':'m²'} · {number(report.totals.earnings)} zł{!report.rows.length?' · Brak wpisów w wybranym zakresie.':''}</p>}
+   <button className="primary" disabled={busy||loading||!report||!from||!to||from>to} onClick={pdf}><Download size={17}/>{busy?'Przygotowywanie PDF…':'Pobierz PDF'}</button>
+  </div>
+  {(role!=='admin'||selectedCrew)&&<HistoryPanel key={`${role}-${selectedCrew}-${from}-${to}`} role={role} crewId={selectedCrew} from={from} to={to} onMessage={onMessage}/>}
+ </section>
+}

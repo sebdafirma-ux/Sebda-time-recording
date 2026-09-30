@@ -74,3 +74,21 @@ describe('report access through the API',()=>{
  expect(mocks.create).not.toHaveBeenCalled()
  })
 })
+
+ describe('export API authorization',()=>{
+ it.each(['Wojtek','Piotrek','Mateusz','Łukasz','Greg'])('lets %s download only their own crew report',async crewName=>{
+  tables.Brygady[0].fields['Nazwa brygady']=crewName
+  tables['Postęp robót']=[{id:'own-report',fields:{Data:'2026-09-30',Brygada:['mine'],'Powiązana budowa':['new'],Budynek:['new-building'],'Wykonano m²':10,'Stawka brygady zł/m²':25},createdTime:''},{id:'other-report',fields:{Data:'2026-09-30',Brygada:['other'],'Wykonano m²':999},createdTime:''}]
+  const response=await request('reports/export?from=2026-09-30&to=2026-09-30&crewId=other')
+  expect(response.status).toBe(200);const data=await response.json();expect(data.title).toBe('Brygada: '+crewName);expect(data.rows.map((r:any)=>r.id)).toEqual(['own-report']);expect(data.totals.earnings).toBe(250)
+ })
+ it('allows an admin all crews and rejects an invalid date range',async()=>{
+  mocks.getUser.mockResolvedValue({id:'admin',email:'admin@example.test'})
+  const response=await request('reports/export?from=2026-09-01&to=2026-09-30');expect(response.status).toBe(200);expect((await response.json()).title).toBe('Wszystkie brygady')
+  expect((await request('reports/export?from=2026-09-30&to=2026-09-01')).status).toBe(400)
+ })
+ it('rejects export by anonymous or blocked users',async()=>{
+  mocks.getUser.mockResolvedValue(null);expect((await request('reports/export')).status).toBe(401)
+  mocks.getUser.mockResolvedValue({id:'user',email:'foreman@example.test',appMetadata:{blocked:true}});expect((await request('reports/export')).status).toBe(401)
+ })
+ })

@@ -15,3 +15,5 @@ export type CrewReport={from:string;to:string;title:string;totals:{hours:number;
 export type History={from:string;to:string;days:Array<{date:string;start:string;end:string;hours:number;site:string;meters:number;earnings:number;helperCost:number}>}
 
 export type Finance={from:string;to:string;settings:{materialRate:number;taxRate:number;fixedMonthly:number;privateMonthly:number;reserveMonthly:number;savingsGoal:number};totals:{meters:number;revenue:number;material:number;subcontractors:number;helperCost:number;tax:number;grossMargin:number;overhead:number;netSurplus:number;savingsProgress:number};rows:Array<{date:unknown;site:string;crew:string;meters:number;saleRate:number;subRate:number;revenue:number;material:number;subcontractor:number;margin:number}>}
+export type ExportRow={id:string;date:string;crewId:string;crew:string;siteId:string;site:string;buildingId:string;building:string;zone:string;meters:number;hours:number;rate:number;earnings:number;notes:string}
+export type ExportReport={from:string;to:string;title:string;kind:'meters'|'hours';site:string;sites:Option[];rows:ExportRow[];totals:{meters:number;hours:number;earnings:number}}
