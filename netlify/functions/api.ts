@@ -7,6 +7,8 @@ type Session={id:string;email:string;name:string;role:Role;crewId?:string;helper
 const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'cache-control':'no-store','x-content-type-options':'nosniff'}})
 const links=(r:RecordRow,key:string)=>Array.isArray(r.fields[key])?r.fields[key]as string[]:[]
 const name=(r:RecordRow,key:string)=>String(r.fields[key]||'Bez nazwy')
+// New sites without a status remain available; closed and paused sites do not.
+const reportSiteAvailable=(r:RecordRow)=>['','Planowana','W trakcie'].includes(String(r.fields.Status||'').trim())
 
 async function session():Promise<Session|null>{
   const u=await getUser();if(!u)return null
@@ -26,8 +28,10 @@ async function bootstrap(s:Session){
   const[sites,buildings,crews]=await Promise.all([list('Budowy'),list('Budynki'),list('Brygady')])
   let allowedCrews=crews,allowedSites=sites,allowedBuildings=buildings,shiftRows:RecordRow[]=[]
   if(s.role==='foreman'){
-    allowedCrews=crews.filter(x=>x.id===s.crewId);const siteIds=new Set(allowedCrews.flatMap(x=>links(x,'Powiązane budowy')))
-    allowedSites=sites.filter(x=>siteIds.has(x.id));allowedBuildings=buildings.filter(x=>links(x,'Powiązana budowa').some(id=>siteIds.has(id)))
+    allowedCrews=crews.filter(x=>x.id===s.crewId)
+    allowedSites=sites.filter(reportSiteAvailable)
+    const siteIds=new Set(allowedSites.map(x=>x.id))
+    allowedBuildings=buildings.filter(x=>siteIds.has(links(x,'Powiązana budowa')[0]))
     shiftRows=await list(Netlify.env.get('AIRTABLE_TIME_TABLE')||'Ewidencja czasu pracy',`AND({Data}=TODAY(),{Brygadzista}='${esc(s.email)}')`)
   }else if(s.role==='helper'){
     const allowed=new Set(s.helperCrewIds||[]);allowedCrews=crews.filter(x=>allowed.has(x.id));const siteIds=new Set(allowedCrews.flatMap(x=>links(x,'Powiązane budowy')))
@@ -77,8 +81,9 @@ async function report(req:Request,s:Session){
   const crewId=s.role==='foreman'?s.crewId:String(b.crewId||'');if(!crewId)return json({error:'Brak brygady'},400)
   const[crew,building]=await Promise.all([list('Brygady',`RECORD_ID()='${esc(crewId)}'`),list('Budynki',`RECORD_ID()='${esc(String(b.buildingId))}'`)])
   if(!crew[0]||!building[0]||(s.role==='foreman'&&crewId!==s.crewId))return json({error:'Brak dostępu do tej brygady lub budynku'},403)
-  if(!links(crew[0],'Powiązane budowy').includes(String(b.siteId))||!links(building[0],'Powiązana budowa').includes(String(b.siteId)))return json({error:'Budowa nie jest przypisana do tej brygady lub budynku'},403)
+  if(!links(building[0],'Powiązana budowa').includes(String(b.siteId)))return json({error:'Budynek nie należy do wybranej budowy'},403)
   const today=new Date().toISOString().slice(0,10),site=(await list('Budowy',`RECORD_ID()='${esc(String(b.siteId))}'`))[0]
+  if(!site||!reportSiteAvailable(site))return json({error:'Wybrana budowa nie jest dostępna do raportowania'},403)
   const crewRateSnapshot=Number(crew[0].fields['Stawka domyślna zł/m²']||0)
   const r=await create('Postęp robót',{Raport:`${today} — ${name(crew[0],'Nazwa brygady')}`,Data:today,Budowa:name(site,'Nazwa budowy'),'Budynek / etap':name(building[0],'Nazwa / numer budynku'),'Kondygnacja / strefa':String(b.zone||''),'Wykonano m²':meters,'Stawka brygady zł/m²':crewRateSnapshot,'Liczba osób':people,Uwagi:String(b.notes||''),'Powiązana budowa':[b.siteId],Brygada:[crewId],Budynek:[b.buildingId]})
   if(b.problem)await create('Problemy i dokumentacja',{Temat:`Zgłoszenie ${today}`,'Data zgłoszenia':today,Opis:String(b.problem),'Powiązana budowa':[b.siteId],Brygada:[crewId],Budynek:[b.buildingId]});return json({id:r.id},201)
