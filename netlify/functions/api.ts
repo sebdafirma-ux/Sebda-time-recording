@@ -72,7 +72,6 @@ async function helperStop(s:Session){
 
 async function report(req:Request,s:Session){
   if(s.role==='helper')return json({error:'Raporty m² dodaje brygadzista lub administrator'},403)
-  if(s.role==='foreman'){const active=await list(Netlify.env.get('AIRTABLE_TIME_TABLE')||'Ewidencja czasu pracy',`AND({Data}=TODAY(),{Brygadzista}='${esc(s.email)}',{Status}='W toku')`);if(!active[0])return json({error:'Najpierw rozpocznij dzień pracy'},409)}
   const b=await req.json()as Record<string,unknown>,meters=Number(b.squareMeters),people=Number(b.people)
   if(!b.siteId||!b.buildingId||!Number.isFinite(meters)||meters<=0||!Number.isInteger(people)||people<1)return json({error:'Uzupełnij poprawnie wymagane pola'},400)
   const crewId=s.role==='foreman'?s.crewId:String(b.crewId||'');if(!crewId)return json({error:'Brak brygady'},400)
