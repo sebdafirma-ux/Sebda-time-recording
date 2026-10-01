@@ -2,7 +2,7 @@ export type Role='admin'|'foreman'|'helper'
 export type Option={id:string;name:string;parentId?:string}
 export type Bootstrap={user:{name:string;role:Role;crewId?:string};sites:Option[];buildings:Option[];crews:Option[];crewSites:Record<string,string[]>;activeShift?:{id:string;startedAt:string;crewId?:string;siteId?:string};todayMinutes:number;contact:{company:string;owner:string;email:string;phone:string}}
 export type Report={siteId:string;buildingId:string;crewId:string;squareMeters:number;zone:string;people:number;notes:string;problem?:string}
-export type AdminResource='crews'|'helpers'|'sites'|'buildings'|'reports'|'problems'|'shifts'|'helperShifts'|'invoices'|'costs'
+export type AdminResource='crews'|'helpers'|'sites'|'buildings'|'reports'|'photos'|'problems'|'shifts'|'helperShifts'|'invoices'|'costs'
 export type AdminRow={id:string;[key:string]:unknown}
 export type AdminData=Record<AdminResource,AdminRow[]>
 export type SummaryRow={date:string;type:string;person:string;crew:string;site:string;hours:number;meters:number;cost:number}
@@ -17,3 +17,5 @@ export type History={from:string;to:string;days:Array<{date:string;start:string;
 export type Finance={from:string;to:string;settings:{materialRate:number;taxRate:number;fixedMonthly:number;privateMonthly:number;reserveMonthly:number;savingsGoal:number};totals:{meters:number;revenue:number;material:number;subcontractors:number;helperCost:number;tax:number;grossMargin:number;overhead:number;netSurplus:number;savingsProgress:number};rows:Array<{date:unknown;site:string;crew:string;meters:number;saleRate:number;subRate:number;revenue:number;material:number;subcontractor:number;margin:number}>}
 export type ExportRow={id:string;date:string;crewId:string;crew:string;siteId:string;site:string;buildingId:string;building:string;zone:string;meters:number;hours:number;rate:number;earnings:number;notes:string}
 export type ExportReport={from:string;to:string;title:string;kind:'meters'|'hours';site:string;sites:Option[];rows:ExportRow[];totals:{meters:number;hours:number;earnings:number}}
+
+export type PhotoUpload={siteId:string;buildingId:string;crewId?:string;description?:string;filename:string;contentType:string;base64:string}
