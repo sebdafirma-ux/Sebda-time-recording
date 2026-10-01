@@ -103,13 +103,14 @@ async function photo(req:Request,s:Session){
   return json({id:row.id,createdAt:now},201)
 }
 
-type Resource='crews'|'helpers'|'sites'|'buildings'|'reports'|'photos'|'problems'|'shifts'|'helperShifts'|'invoices'|'costs'
+type Resource='crews'|'helpers'|'sites'|'buildings'|'reports'|'photos'|'monthly'|'problems'|'shifts'|'helperShifts'|'invoices'|'costs'
 const resources:Record<Resource,{table:string;fields:Record<string,string>;required:string}>={
   crews:{table:'Brygady',required:'name',fields:{name:'Nazwa brygady',foreman:'Brygadzista',email:'E-mail brygadzisty',phone:'Telefon',people:'Liczba osób',rate:'Stawka domyślna zł/m²',status:'Status',notes:'Uwagi',siteIds:'Powiązane budowy'}},
   helpers:{table:'Pomocnicy',required:'name',fields:{name:'Imię i nazwisko',email:'E-mail logowania',phone:'Telefon',hourlyRate:'Stawka godzinowa',status:'Status',crewIds:'Brygady',notes:'Uwagi'}},
   sites:{table:'Budowy',required:'name',fields:{name:'Nazwa budowy',client:'Klient / Generalny wykonawca',location:'Lokalizacja',status:'Status',start:'Data rozpoczęcia',end:'Termin zakończenia',area:'Powierzchnia umowna m²',rate:'Stawka zł/m²',notes:'Uwagi'}},
   buildings:{table:'Budynki',required:'name',fields:{name:'Nazwa / numer budynku',description:'Typ / opis',status:'Status',area:'Powierzchnia tynków m²',start:'Termin startu',end:'Termin zakończenia',notes:'Uwagi',siteIds:'Powiązana budowa'}},
   photos:{table:'Dokumentacja zdjęciowa',required:'description',fields:{description:'Opis',photo:'Zdjęcie',createdAt:'Data i godzina',email:'E-mail użytkownika',user:'Użytkownik',crewIds:'Brygada',siteIds:'Budowa',buildingIds:'Budynek'}},
+  monthly:{table:'Rozliczenia miesięczne',required:'month',fields:{month:'Miesiąc',greg:'Greg m²',wojtek:'Wojtek m²',piotrek:'Piotrek m²',mateusz:'Mateusz m²',lukasz:'Łukasz m²',otherCrews:'Inne brygady / m²',materialNet:'Materiał netto',otherCostsNet:'Pozostałe koszty netto',zus:'ZUS',incomeTax:'Podatek dochodowy / PPE',pit4:'PIT4',vatDue:'VAT do zapłaty',invoiceNet:'Faktura końcowa netto',invoiceVat:'VAT z faktury',invoiceGross:'Faktura końcowa brutto',freeNet:'Wolna nadwyżka netto',savings:'Oszczędności',notes:'Uwagi'}},
   reports:{table:'Postęp robót',required:'name',fields:{name:'Raport',date:'Data',site:'Budowa',building:'Budynek / etap',zone:'Kondygnacja / strefa',meters:'Wykonano m²',crewRate:'Stawka brygady zł/m²',crewValue:'Wartość robót brygady',people:'Liczba osób',notes:'Uwagi',siteIds:'Powiązana budowa',crewIds:'Brygada',buildingIds:'Budynek'}},
   problems:{table:'Problemy i dokumentacja',required:'title',fields:{title:'Temat',date:'Data zgłoszenia',type:'Typ',priority:'Priorytet',status:'Status',responsible:'Odpowiedzialny / adresat',deadline:'Termin działania',description:'Opis',resolution:'Ustalenia / odpowiedź',siteIds:'Powiązana budowa',crewIds:'Brygada',buildingIds:'Budynek'}},
   shifts:{table:'Ewidencja czasu pracy',required:'day',fields:{day:'Dzień',date:'Data',email:'Brygadzista',start:'Start',end:'Koniec',minutes:'Minuty',status:'Status',crewIds:'Brygada'}},
