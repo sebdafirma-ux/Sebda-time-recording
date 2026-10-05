@@ -1,5 +1,7 @@
 const base=()=>Netlify.env.get('AIRTABLE_BASE_ID')
 const token=()=>Netlify.env.get('AIRTABLE_TOKEN')
+// Thrown when the Airtable workspace has used up its monthly API request quota.
+export class AirtableLimitError extends Error{constructor(){super('Airtable monthly API limit exceeded')}}
 export type RecordRow={id:string;fields:Record<string,unknown>;createdTime:string}
 
 type CacheEntry={expires:number;rows:RecordRow[]}
@@ -7,7 +9,7 @@ const CACHE_TTL_MS=30_000
 const cache=new Map<string,CacheEntry>()
 const pending=new Map<string,Promise<RecordRow[]>>()
 
-async function request(path:string,init?:RequestInit){if(!base()||!token())throw new Error('Brak konfiguracji Airtable');const res=await fetch(`https://api.airtable.com/v0/${base()}/${path}`,{...init,headers:{authorization:`Bearer ${token()}`,'content-type':'application/json',...init?.headers}});if(!res.ok){console.error('Airtable request failed',res.status,await res.text());throw new Error('Operacja Airtable nie powiodła się')}return res.json()}
+async function request(path:string,init?:RequestInit){if(!base()||!token())throw new Error('Brak konfiguracji Airtable');const res=await fetch(`https://api.airtable.com/v0/${base()}/${path}`,{...init,headers:{authorization:`Bearer ${token()}`,'content-type':'application/json',...init?.headers}});if(!res.ok){const body=await res.text();console.error('Airtable request failed',res.status,body);if(res.status===429&&body.includes('BILLING_LIMIT'))throw new AirtableLimitError();throw new Error('Operacja Airtable nie powiodła się')}return res.json()}
 
 function invalidate(table:string){const prefix=`${table}\n`;for(const key of cache.keys())if(key.startsWith(prefix))cache.delete(key)}
 
